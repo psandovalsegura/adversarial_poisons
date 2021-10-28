@@ -15,9 +15,10 @@ def options():
     # Central:
     parser.add_argument('--net', default='ResNet18', type=lambda s: [str(item) for item in s.split(',')])
     parser.add_argument('--dataset', default='CIFAR10', type=str, choices=['CIFAR10', 'CIFAR100', 'ImageNet', 'ImageNet1k', 'MNIST', 'TinyImageNet', 'ImageNet_load'])
-    parser.add_argument('--recipe', default='targeted', type=str, choices=['grad_explosion', 'tensorclog',
-                                                                                    'untargeted', 'targeted'])
+    parser.add_argument('--recipe', default='targeted', type=str, choices=['grad_explosion', 'tensorclog', 'untargeted', 'targeted', 'targeted_random'])
     parser.add_argument('--threatmodel', default='single-class', type=str, choices=['single-class', 'third-party', 'random-subset'])
+    parser.add_argument('--cifar_ckpt_dir', default='~/ckpt', type=str)
+    parser.add_argument('--cifar_adv_ckpt_dir', default='~/adv_ckpt', type=str)
 
     # Reproducibility management:
     parser.add_argument('--poisonkey', default=None, type=str, help='Initialize poison setup with this key.')  # Also takes a triplet 0-3-1
@@ -77,6 +78,7 @@ def options():
 
     # Optimization setup
     parser.add_argument('--pretrained', action='store_true', help='Load pretrained models from torchvision, if possible [only valid for ImageNet].')
+    parser.add_argument('--adv_pretrained', action='store_true', help='Load adversarially pretrained models from ckpt_dir.')
     parser.add_argument('--optimization', default='conservative', type=str, help='Optimization Strategy')
 
     # Strategy overrides:

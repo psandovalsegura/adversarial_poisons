@@ -1,5 +1,6 @@
 """Model definitions."""
 
+import os
 import torch
 import torchvision
 from torchvision.models.resnet import BasicBlock, Bottleneck
@@ -8,13 +9,44 @@ from collections import OrderedDict
 
 from .mobilenet import MobileNetV2
 from .vgg import VGG
+from poison_evaluation.models import vgg as VGGPT
+from poison_evaluation.models import ResNet18, GoogLeNet, MobileNet, EfficientNetB0
 
 
-def get_model(model_name, dataset_name, pretrained=False):
+def get_model(model_name, dataset_name, cifar_ckpt_dir, cifar_adv_ckpt_dir, pretrained=False, adv_pretrained=False):
     """Retrieve an appropriate architecture."""
     if 'CIFAR' in dataset_name or 'MNIST' in dataset_name:
-        if pretrained:
-            raise ValueError('Loading pretrained models is only supported for ImageNet.')
+        if pretrained or adv_pretrained:
+            if str.lower(model_name) == 'vgg19':
+                model = VGGPT('VGG19')
+            elif str.lower(model_name) == 'resnet18':
+                model = ResNet18()
+            elif str.lower(model_name) == 'googlenet':
+                model = GoogLeNet()
+            elif str.lower(model_name) == 'mobilenet':
+                model = MobileNet()
+            elif str.lower(model_name) == 'efficientnetb0':
+                model = EfficientNetB0()
+            else:
+                raise NotImplementedError(f'CIFAR model name {model_name} is not implemented.')
+
+            if pretrained:
+                pretrained_path = os.path.join(cifar_ckpt_dir, str.lower(model_name) + '.pt')
+                print(f'==> Loading standard checkpoint {pretrained_path}')
+                ckpt = torch.load(pretrained_path)
+                state_dict = ckpt['model']
+                # Standard models were trained using DataParallel, so keys are 
+                # in a different format
+                state_dict = {k[len('module.'):]: v for k,v in state_dict.items()}
+            if adv_pretrained:
+                adv_pretrained_path = os.path.join(cifar_adv_ckpt_dir, str.lower(model_name) + '.pt')
+                print(f'==> Loading adversarial checkpoint {adv_pretrained_path}')
+                ckpt = torch.load(adv_pretrained_path)
+                state_dict = ckpt['model']
+            
+            model.load_state_dict(state_dict, strict=True)
+            return model
+
         in_channels = 1 if dataset_name == 'MNIST' else 3
         num_classes = 10 if dataset_name in ['CIFAR10', 'MNIST', 'CIFAR_resized', 'CIFAR_load'] else 100
         if 'ResNet' in model_name:

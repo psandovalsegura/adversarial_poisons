@@ -25,7 +25,7 @@ if __name__ == "__main__":
     forgemaster = village.Forgemaster(args, setup=setup)
 
     start_time = time.time()
-    if args.pretrained:
+    if args.pretrained or args.adv_pretrained:
         print('Loading pretrained model...')
         stats_clean = None
     else:

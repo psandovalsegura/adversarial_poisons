@@ -1,6 +1,7 @@
 """Interface for poison recipes."""
 from .forgemaster_untargeted import ForgemasterUntargeted
 from .forgemaster_targeted import ForgemasterTargeted
+from .forgemaster_targetedrandom import ForgemasterTargetedRandom
 from .forgemaster_explosion import ForgemasterExplosion
 from .forgemaster_tensorclog import ForgemasterTensorclog
 
@@ -17,6 +18,8 @@ def Forgemaster(args, setup=dict(device=torch.device('cpu'), dtype=torch.float))
         return ForgemasterUntargeted(args, setup)
     elif args.recipe == 'targeted':
         return ForgemasterTargeted(args, setup)
+    elif args.recipe == 'targeted_random':
+        return ForgemasterTargetedRandom(args, setup)
     else:
         raise NotImplementedError()
 

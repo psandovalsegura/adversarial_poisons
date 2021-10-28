@@ -106,7 +106,9 @@ class _ClientBase:
 
     def _initialize_model(self, model_name, feature_extractor=False):
 
-        model = get_model(model_name, self.args.dataset, pretrained=self.args.pretrained)
+        model = get_model(model_name, self.args.dataset, 
+                          cifar_ckpt_dir=self.args.cifar_ckpt_dir, cifar_adv_ckpt_dir=self.args.cifar_adv_ckpt_dir, 
+                          pretrained=self.args.pretrained, adv_pretrained=self.args.adv_pretrained)
         # Define training routine
         defs = training_strategy(model_name, self.args)
         criterion = torch.nn.CrossEntropyLoss()
