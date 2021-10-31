@@ -106,6 +106,8 @@ def train(args):
             net = VGG('VGG19')
         elif str.lower(args.model_name) == 'resnet18':
             net = ResNet18()
+        elif str.lower(args.model_name) == 'resnet50':
+            net = ResNet50()
         elif str.lower(args.model_name) == 'googlenet':
             net = GoogLeNet()
         elif str.lower(args.model_name) == 'mobilenet':
