@@ -39,7 +39,7 @@ def options():
 
 
     # Poison brewing:
-    parser.add_argument('--attackoptim', default='PGD', type=str)
+    parser.add_argument('--attackoptim', default='PGD', type=str, help='Optimizer. Either Adam, signAdam, momSGD, momPGD, PGD, GD, MIFGSM')
     parser.add_argument('--attackiter', default=250, type=int)
     parser.add_argument('--init', default='randn', type=str)  # randn / rand
     parser.add_argument('--tau', default=0.05, type=float)

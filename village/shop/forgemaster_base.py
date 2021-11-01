@@ -84,6 +84,9 @@ class _Forgemaster():
             # Rule 1a
             self.tau0 = self.args.eps / 255 / furnace.ds * self.args.tau * (self.args.pbatch / 512) / self.args.ensemble
             self.tau0 = self.tau0.mean()
+        elif self.args.attackoptim in ['MIFGSM']:
+            # Ignore args.tau for momentum iterative attacks, and use args.attackiter instead
+            self.tau0 = self.args.eps / 255 / furnace.ds / self.args.attackiter
         else:
             # Rule 2
             self.tau0 = self.args.tau * (self.args.pbatch / 512) / self.args.ensemble
@@ -113,6 +116,7 @@ class _Forgemaster():
         else:
             poison_bounds = None
 
+        momentum_buffer = torch.zeros_like(poison_delta)
         for step in range(self.args.attackiter):
             if step % 10 == 0:
                 print(f'Step {step}')
@@ -126,7 +130,7 @@ class _Forgemaster():
                     avg = (end-start)/100
                     start = end
                     print(f'average time per epoch: {len(dataloader) * avg}')
-                loss, prediction = self._batched_step(poison_delta, poison_bounds, example, client, furnace)
+                loss, prediction = self._batched_step(poison_delta, poison_bounds, example, client, furnace, momentum_buffer)
                 target_losses += loss
                 poison_correct += prediction
 
@@ -170,7 +174,7 @@ class _Forgemaster():
 
 
 
-    def _batched_step(self, poison_delta, poison_bounds, example, client, furnace):
+    def _batched_step(self, poison_delta, poison_bounds, example, client, furnace, momentum_buffer):
         """Take a step toward minmizing the current target loss."""
         inputs, labels, ids = example
         inputs = inputs.to(**self.setup)
@@ -186,6 +190,7 @@ class _Forgemaster():
 
         if len(batch_positions) > 0:
             delta_slice = poison_delta[poison_slices].detach().to(**self.setup)
+            momentum_slice = momentum_buffer[poison_slices].detach().to(**self.setup)
             if self.args.clean_grad:
                 delta_slice = torch.zeros_like(delta_slice)
             delta_slice.requires_grad_()
@@ -207,11 +212,12 @@ class _Forgemaster():
                 delta_slice.data = poison_delta[poison_slices].detach().to(**self.setup)
 
             # Update Step
-            if self.args.attackoptim in ['PGD', 'GD']:
-                delta_slice = self._pgd_step(delta_slice, poison_images, self.tau0, furnace.dm, furnace.ds)
+            if self.args.attackoptim in ['PGD', 'GD', 'MIFGSM']:
+                delta_slice, momentum_slice = self._pgd_step(delta_slice, momentum_slice, poison_images, self.tau0, furnace.dm, furnace.ds)
 
                 # Return slice to CPU:
                 poison_delta[poison_slices] = delta_slice.detach().to(device=torch.device('cpu'))
+                momentum_buffer[poison_slices] = momentum_slice.detach().to(device=torch.device('cpu'))
             elif self.args.attackoptim in ['Adam', 'signAdam', 'momSGD', 'momPGD']:
                 poison_delta.grad[poison_slices] = delta_slice.grad.detach().to(device=torch.device('cpu'))
                 poison_bounds[poison_slices] = poison_images.detach().to(device=torch.device('cpu'))
@@ -229,12 +235,16 @@ class _Forgemaster():
             raise NotImplementedError()
             return target_loss.item(), prediction.item()
 
-    def _pgd_step(self, delta_slice, poison_imgs, tau, dm, ds):
+    def _pgd_step(self, delta_slice, momentum_slice, poison_imgs, tau, dm, ds, decay_factor=1.0):
         """PGD step."""
         with torch.no_grad():
             # Gradient Step
             if self.args.attackoptim == 'GD':
                 delta_slice.data -= delta_slice.grad * tau
+            elif self.args.attackoptim == 'MIFGSM':
+                g = momentum_slice * decay_factor + normalize_by_pnorm(delta_slice.grad.data, p=1)
+                momentum_slice.data = g
+                delta_slice.data -= delta_slice.grad.sign() * tau
             else:
                 delta_slice.data -= delta_slice.grad.sign() * tau
 
@@ -243,4 +253,33 @@ class _Forgemaster():
                                                    ds / 255), -self.args.eps / ds / 255)
             delta_slice.data = torch.max(torch.min(delta_slice, (1 - dm) / ds -
                                                    poison_imgs), -dm / ds - poison_imgs)
-        return delta_slice
+        return delta_slice, momentum_slice
+
+def normalize_by_pnorm(x, p=2, small_constant=1e-6):
+    """
+    Normalize gradients for gradient (not gradient sign) attacks.
+    # TODO: move this function to utils
+    :param x: tensor containing the gradients on the input.
+    :param p: (optional) order of the norm for the normalization (1 or 2).
+    :param small_constant: (optional float) to avoid dividing by zero.
+    :return: normalized gradients.
+    """
+    # loss is averaged over the batch so need to multiply the batch
+    # size to find the actual gradient of each input sample
+
+    assert isinstance(p, float) or isinstance(p, int)
+    norm = _get_norm_batch(x, p)
+    norm = torch.max(norm, torch.ones_like(norm) * small_constant)
+    return _batch_multiply_tensor_by_vector(1. / norm, x)
+
+def _get_norm_batch(x, p):
+    batch_size = x.size(0)
+    return x.abs().pow(p).view(batch_size, -1).sum(dim=1).pow(1. / p)
+
+def _batch_multiply_tensor_by_vector(vector, batch_tensor):
+    """Equivalent to the following
+    for ii in range(len(vector)):
+        batch_tensor.data[ii] *= vector[ii]
+    return batch_tensor
+    """
+    return (batch_tensor.transpose(0, -1) * vector).transpose(0, -1).contiguous()
