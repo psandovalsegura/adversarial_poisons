@@ -4,6 +4,7 @@ from .forgemaster_targeted import ForgemasterTargeted
 from .forgemaster_targetedrandom import ForgemasterTargetedRandom
 from .forgemaster_explosion import ForgemasterExplosion
 from .forgemaster_tensorclog import ForgemasterTensorclog
+from .forgemaster_rotation import ForgemasterRotation
 
 import torch
 
@@ -20,6 +21,8 @@ def Forgemaster(args, setup=dict(device=torch.device('cpu'), dtype=torch.float))
         return ForgemasterTargeted(args, setup)
     elif args.recipe == 'targeted_random':
         return ForgemasterTargetedRandom(args, setup)
+    elif args.recipe == 'rotation':
+        return ForgemasterRotation(args, setup)
     else:
         raise NotImplementedError()
 
