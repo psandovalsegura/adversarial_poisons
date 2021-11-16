@@ -29,19 +29,19 @@ export POISON_DATASET_DIR='/vulcanscratch/psando/untrainable_datasets/adv_poison
 export MODEL_NAME='ResNet18'
 export RECIPE='functional'
 export ATTACKITER='100'
-export ATTACKOPTIM='PGD'
+export ATTACKNAME='stadv'
 
 # Craft poison
 python anneal.py --net $MODEL_NAME --dataset CIFAR10 --data_path /vulcanscratch/psando/cifar-10/ \
 --recipe $RECIPE --eps 8 --budget 1.0 --save poison_dataset \
 --cifar_ckpt_dir /vulcanscratch/psando/cifar_model_ckpts/ --cifar_adv_ckpt_dir /vulcanscratch/psando/cifar_model_ckpts/adv \
---poison_path ${POISON_DATASET_DIR}/${RECIPE}_${MODEL_NAME}_optim=${ATTACKOPTIM}_iter=${ATTACKITER} \
---attackoptim $ATTACKOPTIM --attackiter $ATTACKITER --init zero
+--poison_path ${POISON_DATASET_DIR}/${RECIPE}_${MODEL_NAME}_name=${ATTACKNAME}_iter=${ATTACKITER} \
+--attackname ${ATTACKNAME} --attackiter $ATTACKITER --init zero
 
 # Evaluate poison
 python poison_evaluation/main.py --model_name $MODEL_NAME --epochs 100 \
---poison_path ${POISON_DATASET_DIR}/${RECIPE}_${MODEL_NAME}_optim=${ATTACKOPTIM}_iter=${ATTACKITER} \
+--poison_path ${POISON_DATASET_DIR}/${RECIPE}_${MODEL_NAME}_name=${ATTACKNAME}_iter=${ATTACKITER} \
 --cifar_path /vulcanscratch/psando/cifar-10 --disable_tqdm --workers 4
 
 # Evaluate transferability
-python poison_evaluation/eval_transferability.py ${POISON_DATASET_DIR}/${RECIPE}_${MODEL_NAME}_optim=${ATTACKOPTIM}_iter=${ATTACKITER} --disable_tqdm --workers 4
+python poison_evaluation/eval_transferability.py ${POISON_DATASET_DIR}/${RECIPE}_${MODEL_NAME}_name=${ATTACKNAME}_iter=${ATTACKITER} --disable_tqdm --workers 4

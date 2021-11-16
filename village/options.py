@@ -46,7 +46,7 @@ def options():
     parser.add_argument('--scheduling', action='store_false', help='Disable step size decay.')
     parser.add_argument('--restarts', default=8, type=int, help='How often to restart the attack.')
     parser.add_argument('--poison_partition', default=None, type=int, help='How many poisons to craft at a time')
-
+    parser.add_argument('--attackname', default='recoloradv+stadv+delta', type=str, help='Builds an attack from a name like recoloradv or stadv+delta or recoloradv+stadv+delta')
 
     parser.add_argument('--pbatch', default=512, type=int, help='Poison batch size during optimization')
     parser.add_argument('--pshuffle', action='store_true', help='Shuffle poison batch during optimization')
