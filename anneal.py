@@ -43,4 +43,5 @@ if __name__ == "__main__":
     print('---------------------------------------------------')
     print(f'Finished computations with train time: {str(datetime.timedelta(seconds=train_time - start_time))}')
     print(f'--------------------------- forge time: {str(datetime.timedelta(seconds=forge_time - train_time))}')
+    print(f'Saved to: {args.poison_path}')
     print('-------------Job finished.-------------------------')
