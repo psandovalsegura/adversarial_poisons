@@ -201,18 +201,18 @@ def train(args):
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.SGD(net.parameters(), lr=args.lr,
                             momentum=0.9, weight_decay=5e-4)
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
+        #scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
         for epoch in range(start_epoch, start_epoch+args.epochs):
             train(epoch)
             acc = test(epoch)
-            scheduler.step()
+            #scheduler.step()
 
             if epoch % 10 == 0 and (args.ckpt_dir is not None):
                 print(f'==> Saving best checkpoint to: {args.ckpt_dir}')
                 sd_info = {
                     'model':net.state_dict(),
                     'optimizer':optimizer.state_dict(),
-                    'schedule':scheduler.state_dict(),
+                    'schedule':None, #scheduler.state_dict()
                     'epoch':epoch+1,
                 }
 

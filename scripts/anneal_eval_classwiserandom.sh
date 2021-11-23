@@ -28,20 +28,20 @@ pip3 install -r ${SCRIPT_DIR}/requirements.txt
 export POISON_DATASET_DIR='/vulcanscratch/psando/untrainable_datasets/adv_poisons/fresh_craft'
 export MODEL_NAME='ResNet18'
 export RECIPE='classwise_random'
-export EPS='64'
+export EPS='8'
 export ATTACKOPTIM='None'
 
 # Craft poison
-python anneal.py --net $MODEL_NAME --dataset CIFAR10 --data_path /vulcanscratch/psando/cifar-10/ \
---recipe $RECIPE --eps 64 --budget 1.0 --save poison_dataset \
---cifar_ckpt_dir /vulcanscratch/psando/cifar_model_ckpts/ --cifar_adv_ckpt_dir /vulcanscratch/psando/cifar_model_ckpts/adv \
---poison_path ${POISON_DATASET_DIR}/${RECIPE}_${MODEL_NAME}_optim=${ATTACKOPTIM}_eps=${EPS} \
---attackoptim $ATTACKOPTIM --attackiter $ATTACKITER --init zero --pretrained
+# python anneal.py --net $MODEL_NAME --dataset CIFAR10 --data_path /vulcanscratch/psando/cifar-10/ \
+# --recipe $RECIPE --eps 64 --budget 1.0 --save poison_dataset \
+# --cifar_ckpt_dir /vulcanscratch/psando/cifar_model_ckpts/ --cifar_adv_ckpt_dir /vulcanscratch/psando/cifar_model_ckpts/adv \
+# --poison_path ${POISON_DATASET_DIR}/${RECIPE}_${MODEL_NAME}_optim=${ATTACKOPTIM}_eps=${EPS} \
+# --attackoptim $ATTACKOPTIM --attackiter $ATTACKITER --init zero --pretrained
 
 # Evaluate poison
 python poison_evaluation/main.py --model_name $MODEL_NAME --epochs 100 \
---poison_path ${POISON_DATASET_DIR}/${RECIPE}_${MODEL_NAME}_optim=${ATTACKOPTIM}_eps=${EPS} \
---cifar_path /vulcanscratch/psando/cifar-10 --disable_tqdm --workers 4
+--poison_path ${POISON_DATASET_DIR}/classwise_random_ResNet18_optim=None_iter=1 \
+--cifar_path /vulcanscratch/psando/cifar-10 --disable_tqdm --workers 4 --lr 0.025
 
 # Evaluate transferability
-python poison_evaluation/eval_transferability.py ${POISON_DATASET_DIR}/${RECIPE}_${MODEL_NAME}_optim=${ATTACKOPTIM}_eps=${EPS} --disable_tqdm --workers 4
+# python poison_evaluation/eval_transferability.py ${POISON_DATASET_DIR}/${RECIPE}_${MODEL_NAME}_optim=${ATTACKOPTIM}_eps=${EPS} --lr 0.025 --epochs 60 --disable_tqdm --workers 4
