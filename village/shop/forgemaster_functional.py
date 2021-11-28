@@ -48,9 +48,10 @@ class ForgemasterFunctional(_Forgemaster):
         normalizer = utils.DifferentiableNormalize(mean=furnace.trainset.data_mean,
                                                    std=furnace.trainset.data_std)
         attack = get_attack_from_name(self.args.attackname, model, normalizer, verbose=False)
-        print(f'[Batch idx: {batch_idx}] {self.args.attackname} for {attack.attack_kwargs["num_iterations"]} iterations.')
+        
         # Default settings for the attack can be overwritten by uncommenting the following line
-        # attack.attack_kwargs['num_iterations'] = self.args.attackiter
+        attack.attack_kwargs['num_iterations'] = self.args.attackiter
+        print(f'[Batch idx: {batch_idx}] {self.args.attackname} for {attack.attack_kwargs["num_iterations"]} iterations.')
 
         # Attack expects unnormalized inputs
         unnormalized_inputs = (inputs * furnace.ds) + furnace.dm

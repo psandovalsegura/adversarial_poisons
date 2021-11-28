@@ -132,3 +132,4 @@ dmypy.json
 *.out
 slurm/*
 *.pt
+imgs/mean_deltas/*

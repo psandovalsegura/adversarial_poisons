@@ -28,7 +28,7 @@ pip3 install -r ${SCRIPT_DIR}/requirements.txt
 export POISON_DATASET_DIR='/vulcanscratch/psando/untrainable_datasets/adv_poisons/fresh_craft'
 export MODEL_NAME='ResNet18'
 export RECIPE='targeted'
-export ATTACKITER='10'
+export ATTACKITER='250'
 export ATTACKOPTIM='MIFGSM'
 
 # Craft poison

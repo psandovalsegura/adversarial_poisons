@@ -1,14 +1,16 @@
 #!/bin/bash
-#SBATCH --job-name=eval-t
-#SBATCH --time=3-00:00:00
+#SBATCH --job-name=use-wd
+#SBATCH --time=1-00:00:00
 #SBATCH --partition=dpart
-#SBATCH --qos=medium
+#SBATCH --qos=high
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:p6000:1
+#SBATCH --cpus-per-task=4
+#SBATCH --mem-per-cpu=8G
 #SBATCH --mail-type=end          
 #SBATCH --mail-type=fail         
 #SBATCH --mail-user=psando@umd.edu
-#SBATCH --dependency=afterok:967617
+# -- SBATCH --dependency=afterok:967617
 
 set -x
 
@@ -52,10 +54,7 @@ cd $SCRIPT_DIR
 
 export POISON_DATASET_DIR='/vulcanscratch/psando/untrainable_datasets/adv_poisons/fresh_craft'
 export MODEL_NAME='ResNet18'
-export RECIPE='targeted'
-export ATTACKITER='250'
 
 python poison_evaluation/main.py --model_name $MODEL_NAME --epochs 100 \
---poison_path ${POISON_DATASET_DIR}/${RECIPE}_${MODEL_NAME}_iter=${ATTACKITER} \
---cifar_path /vulcanscratch/psando/cifar-10 --disable_tqdm
+--cifar_path /vulcanscratch/psando/cifar-10 --disable_tqdm --workers 4 --lr 0.025 --use_wd
 

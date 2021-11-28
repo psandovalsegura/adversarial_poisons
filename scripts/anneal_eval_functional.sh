@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=anneal-functional
-#SBATCH --time=3-00:00:00
+#SBATCH --time=1-12:00:00
 #SBATCH --partition=dpart
-#SBATCH --qos=medium
+#SBATCH --qos=high
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:p6000:1
 #SBATCH --cpus-per-task=4
@@ -28,7 +28,7 @@ pip3 install -r ${SCRIPT_DIR}/requirements.txt
 export POISON_DATASET_DIR='/vulcanscratch/psando/untrainable_datasets/adv_poisons/fresh_craft'
 export MODEL_NAME='ResNet18'
 export RECIPE='functional'
-export ATTACKITER='100'
+export ATTACKITER='250'
 export ATTACKNAME='stadv'
 
 # Craft poison
