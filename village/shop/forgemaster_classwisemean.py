@@ -1,0 +1,68 @@
+import os
+import numpy as np
+import torch
+from ..consts import NON_BLOCKING, BENCHMARK
+import time
+torch.backends.cudnn.benchmark = BENCHMARK
+import pdb
+
+from .forgemaster_base import _Forgemaster
+
+class ForgemasterClasswiseMean(_Forgemaster):
+    """ Perturbs samples of a given class using a previously crafted 
+        poison's mean delta for that class. 
+    """
+    classwise_mean_dir = '/cfarhomes/psando/Documents/adversarial_poisons/imgs/mean_deltas'
+
+    def _forge(self, client, furnace):
+        """Run generalized iterative routine."""
+        print(f'Starting forgeing procedure ...')
+
+        poison_delta = furnace.initialize_poison(initializer='zero')
+        if self.args.full_data:
+            dataloader = furnace.trainloader
+        else:
+            dataloader = furnace.poisonloader
+
+        # Create random noise
+        num_classes = len(furnace.trainset.classes)
+        classwise_mean_path = os.path.join(self.classwise_mean_dir, self.args.classwise_mean_name)
+        classwise_noise = torch.load(classwise_mean_path)
+        assert classwise_noise.shape[0] == num_classes, f'Classwise noise mean should have {num_classes} but instead has shape {classwise_noise.shape}!'
+        self.classwise_noise = classwise_noise.to(**self.setup)
+
+        self.ds = torch.tensor(furnace.trainset.data_std)[None, :, None, None].to(**self.setup)
+
+        for batch, example in enumerate(dataloader):
+            if batch == 0:
+                start = time.time()
+            elif batch % 100 == 0:
+                end = time.time()
+                avg = (end-start)/100
+                start = end
+                print(f'average time per epoch: {len(dataloader) * avg}')
+            self._perturb_batch(batch, example, poison_delta, furnace)
+
+        # Return a tensor of poison_delta
+        return poison_delta
+
+    def _perturb_batch(self, batch_idx, example, poison_delta, furnace):
+        if batch_idx % 50 == 0:
+            print(f'[Batch idx {batch_idx}]')
+        inputs, labels, ids = example
+        inputs = inputs.to(**self.setup)
+        labels = labels.to(dtype=torch.long, device=self.setup['device'], non_blocking=NON_BLOCKING)
+
+        # Perturb using noise, selected based on class label, then normalize
+        perturbation_tensors = self.classwise_noise[labels] / self.ds
+        
+        # Save adversarial perturbations to poison_delta
+        poison_slices, batch_positions = [], []
+        for batch_id, image_id in enumerate(ids.tolist()):
+            lookup = furnace.poison_lookup.get(image_id)
+            if lookup is not None:
+                poison_slices.append(lookup)
+                batch_positions.append(batch_id)
+
+        # Return slice to CPU:
+        poison_delta[poison_slices] = perturbation_tensors.detach().to(device=torch.device('cpu'))
