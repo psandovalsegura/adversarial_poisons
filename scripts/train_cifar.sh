@@ -24,7 +24,7 @@ pip3 install --upgrade pip
 pip3 install -r ${SCRIPT_DIR}/requirements.txt
 
 # Train and Save
-export MODEL_NAME='densenet121'
+export MODEL_NAME='ResNet18'
 cd $SCRIPT_DIR
-python poison_evaluation/main.py --model_name $MODEL_NAME --ckpt_dir $CKPT_DIR \
+python poison_evaluation/main.py --model_name $MODEL_NAME \
 --runs 1 --cifar_path /vulcanscratch/psando/cifar-10 --disable_tqdm

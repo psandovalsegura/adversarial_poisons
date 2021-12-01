@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=anneal-classwiserandom
+#SBATCH --job-name=train-settings
 #SBATCH --time=1-00:00:00
 #SBATCH --partition=dpart
-#SBATCH --qos=medium
+#SBATCH --qos=high
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:p6000:1
 #SBATCH --cpus-per-task=4
@@ -41,7 +41,11 @@ export ATTACKOPTIM='None'
 # Evaluate poison
 python poison_evaluation/main.py --model_name $MODEL_NAME --epochs 100 \
 --poison_path ${POISON_DATASET_DIR}/classwise_random_ResNet18_optim=None_iter=1 \
---cifar_path /vulcanscratch/psando/cifar-10 --disable_tqdm --workers 4 --lr 0.025
+--cifar_path /vulcanscratch/psando/cifar-10 --disable_tqdm --workers 4 --lr 0.025 --use_scheduler
+
+python poison_evaluation/main.py --model_name $MODEL_NAME --epochs 100 \
+--poison_path ${POISON_DATASET_DIR}/classwise_random_ResNet18_optim=None_iter=1 \
+--cifar_path /vulcanscratch/psando/cifar-10 --disable_tqdm --workers 4 --lr 0.025 --use_scheduler --use_wd
 
 # Evaluate transferability
 # python poison_evaluation/eval_transferability.py ${POISON_DATASET_DIR}/${RECIPE}_${MODEL_NAME}_optim=${ATTACKOPTIM}_eps=${EPS} --lr 0.025 --epochs 60 --disable_tqdm --workers 4

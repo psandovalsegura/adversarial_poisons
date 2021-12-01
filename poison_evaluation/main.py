@@ -50,6 +50,8 @@ def main():
     parser.add_argument('--disable_tqdm', action='store_true')
     parser.add_argument('--eval_only', action='store_true')
     parser.add_argument('--use_pretrained', action='store_true')
+    parser.add_argument('--use_wd', action='store_true', help='whether to use weight decay')
+    parser.add_argument('--use_scheduler', action='store_true', help='whether to use learning rate scheduler')
     args = parser.parse_args()
     print(args)
     train(args)
@@ -168,13 +170,17 @@ def train(args):
                 total += targets.size(0)
                 correct += predicted.eq(targets).sum().item()
 
-        def test(epoch):
+        def test(epoch, loader, name):
             net.eval()
             test_loss = 0
             correct = 0
             total = 0
             with torch.no_grad():
-                for batch_idx, (inputs, targets) in tqdm(enumerate(testloader), desc=f'Test Epoch {epoch}', disable=args.disable_tqdm):
+                for batch_idx, batch in tqdm(enumerate(loader), desc=f'Test Epoch {epoch}', disable=args.disable_tqdm):
+                    if name == 'Train' and args.poison_path:
+                        inputs, targets, clean_inputs = batch
+                    else:
+                        inputs, targets = batch
                     inputs, targets = inputs.to(device), targets.to(device)
                     outputs = net(inputs)
                     loss = criterion(outputs, targets)
@@ -183,7 +189,7 @@ def train(args):
                     _, predicted = outputs.max(1)
                     total += targets.size(0)
                     correct += predicted.eq(targets).sum().item()
-                print(f'avg loss: {test_loss/(batch_idx + 1)}, acc: {100. * correct/total}')
+                print(f'{name} avg loss: {test_loss/(batch_idx + 1)}, {name} acc: {100. * correct/total}')
 
             # Save checkpoint.
             acc = 100.*correct/total
@@ -200,19 +206,24 @@ def train(args):
 
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.SGD(net.parameters(), lr=args.lr,
-                            momentum=0.9, weight_decay=5e-4)
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
+                            momentum=0.9, weight_decay=(5e-4 if args.use_wd else 0))
+        if args.use_scheduler:
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
+        else:
+            scheduler = None
         for epoch in range(start_epoch, start_epoch+args.epochs):
             train(epoch)
-            acc = test(epoch)
-            scheduler.step()
+            acc = test(epoch, testloader, 'Test')
+            _ = test(epoch, trainloader, 'Train')
+            if scheduler:
+                scheduler.step()
 
             if epoch % 10 == 0 and (args.ckpt_dir is not None):
                 print(f'==> Saving best checkpoint to: {args.ckpt_dir}')
                 sd_info = {
                     'model':net.state_dict(),
                     'optimizer':optimizer.state_dict(),
-                    'schedule':scheduler.state_dict(),
+                    'schedule':(scheduler.state_dict() if scheduler else None),
                     'epoch':epoch+1,
                 }
 

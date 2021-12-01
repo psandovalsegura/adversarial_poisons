@@ -1,15 +1,16 @@
 #!/bin/bash
+#SBATCH --account=djacobs
 #SBATCH --job-name=cw-mean
-#SBATCH --time=1-00:00:00
+#SBATCH --time=1-12:00:00
 #SBATCH --partition=dpart
-#SBATCH --qos=medium
+#SBATCH --qos=high
 #SBATCH --ntasks=1
 #SBATCH --gres=gpu:p6000:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem-per-cpu=8G
-# -- SBATCH --mail-type=end          
-# -- SBATCH --mail-type=fail         
-# -- SBATCH --mail-user=psando@umd.edu
+#SBATCH --mail-type=end          
+#SBATCH --mail-type=fail         
+#SBATCH --mail-user=psando@umd.edu
 # -- SBATCH --dependency=afterok:
 
 set -x
@@ -28,21 +29,20 @@ pip3 install -r ${SCRIPT_DIR}/requirements.txt
 export POISON_DATASET_DIR='/vulcanscratch/psando/untrainable_datasets/adv_poisons/fresh_craft'
 export MODEL_NAME='ResNet18'
 export RECIPE='classwise_mean'
-export EPS='8'
-export ATTACKOPTIM='None'
-export CLASSWISE_MEAN_NAME='targeted_ResNet18_iter=250'
 
-# Craft poison
+declare -a POISON_NAMES=('untargeted' 'targeted_ResNet18_optim=MIFGSM_iter=10_paugment' 'targeted_ResNet18_optim=MIFGSM_iter=100_paugment' 'functional_ResNet18_optim=PGD_iter=100' 'functional_ResNet18_name=recoloradv_iter=100' 'functional_ResNet18_name=stadv_iter=100')
+for CLASSWISE_MEAN_NAME in ${POISON_NAMES[@]}; do
+
+# Craft poison using class-wise mean of perturbations
 python anneal.py --net $MODEL_NAME --dataset CIFAR10 --data_path /vulcanscratch/psando/cifar-10/ \
---recipe $RECIPE --eps 64 --budget 1.0 --save poison_dataset \
+--recipe $RECIPE --budget 1.0 --save poison_dataset \
 --cifar_ckpt_dir /vulcanscratch/psando/cifar_model_ckpts/ --cifar_adv_ckpt_dir /vulcanscratch/psando/cifar_model_ckpts/adv \
---poison_path ${POISON_DATASET_DIR}/${RECIPE}_${MODEL_NAME}_optim=${ATTACKOPTIM}_eps=${EPS} \
---attackoptim $ATTACKOPTIM --init zero --pretrained --classwise_mean_name ${CLASSWISE_MEAN_NAME}
+--poison_path ${POISON_DATASET_DIR}/${RECIPE}_${CLASSWISE_MEAN_NAME} \
+--init zero --pretrained --classwise_mean_name ${CLASSWISE_MEAN_NAME}
 
 # Evaluate poison
 python poison_evaluation/main.py --model_name $MODEL_NAME --epochs 100 \
---poison_path ${POISON_DATASET_DIR}/classwise_random_ResNet18_optim=None_iter=1 \
---cifar_path /vulcanscratch/psando/cifar-10 --disable_tqdm --workers 4
+--poison_path ${POISON_DATASET_DIR}/${RECIPE}_${CLASSWISE_MEAN_NAME} \
+--cifar_path /vulcanscratch/psando/cifar-10 --disable_tqdm --workers 4 --lr 0.025 --use_scheduler --use_wd
 
-# Evaluate transferability
-# python poison_evaluation/eval_transferability.py ${POISON_DATASET_DIR}/${RECIPE}_${MODEL_NAME}_optim=${ATTACKOPTIM}_eps=${EPS} --lr 0.025 --epochs 60 --disable_tqdm --workers 4
+done
