@@ -50,7 +50,7 @@ def main():
     parser.add_argument('--disable_tqdm', action='store_true')
     parser.add_argument('--eval_only', action='store_true')
     parser.add_argument('--use_pretrained', action='store_true')
-    parser.add_argument('--use_wd', action='store_true', help='whether to use weight decay')
+    parser.add_argument('--weight_decay', default=5e-4, type=float, help='weight decay (default=5e-4). Use --weight_decay=0 to turn off weight decay.')
     parser.add_argument('--use_scheduler', action='store_true', help='whether to use learning rate scheduler')
     args = parser.parse_args()
     print(args)
@@ -206,7 +206,7 @@ def train(args):
 
         criterion = nn.CrossEntropyLoss()
         optimizer = optim.SGD(net.parameters(), lr=args.lr,
-                            momentum=0.9, weight_decay=(5e-4 if args.use_wd else 0))
+                            momentum=0.9, weight_decay=args.weight_decay)
         if args.use_scheduler:
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
         else:

@@ -30,7 +30,8 @@ export POISON_DATASET_DIR='/vulcanscratch/psando/untrainable_datasets/adv_poison
 export MODEL_NAME='ResNet18'
 export RECIPE='classwise_mean'
 
-declare -a POISON_NAMES=('untargeted' 'targeted_ResNet18_optim=MIFGSM_iter=10_paugment' 'targeted_ResNet18_optim=MIFGSM_iter=100_paugment' 'functional_ResNet18_optim=PGD_iter=100' 'functional_ResNet18_name=recoloradv_iter=100' 'functional_ResNet18_name=stadv_iter=100')
+# previous poison names: 'untargeted' 'targeted_ResNet18_optim=MIFGSM_iter=10_paugment' 'targeted_ResNet18_optim=MIFGSM_iter=100_paugment' 'functional_ResNet18_optim=PGD_iter=100' 
+declare -a POISON_NAMES=('functional_ResNet18_name=recoloradv_iter=100' 'functional_ResNet18_name=stadv_iter=100')
 for CLASSWISE_MEAN_NAME in ${POISON_NAMES[@]}; do
 
 # Craft poison using class-wise mean of perturbations
@@ -43,6 +44,6 @@ python anneal.py --net $MODEL_NAME --dataset CIFAR10 --data_path /vulcanscratch/
 # Evaluate poison
 python poison_evaluation/main.py --model_name $MODEL_NAME --epochs 100 \
 --poison_path ${POISON_DATASET_DIR}/${RECIPE}_${CLASSWISE_MEAN_NAME} \
---cifar_path /vulcanscratch/psando/cifar-10 --disable_tqdm --workers 4 --lr 0.025 --use_scheduler --use_wd
+--cifar_path /vulcanscratch/psando/cifar-10 --disable_tqdm --workers 4 --lr 0.025 --use_scheduler --weight_decay 5e-4
 
 done
