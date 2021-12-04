@@ -59,7 +59,7 @@ class ForgemasterFunctional(_Forgemaster):
 
         # Get adversarial perturbation, then normalize
         perturbation_tensors = perturbation.adversarial_tensors()
-        perturbation_tensors = (perturbation_tensors - furnace.dm) / furnace.ds
+        perturbation_tensors = (perturbation_tensors - unnormalized_inputs) / furnace.ds
         
         # Save adversarial perturbations to poison_delta
         poison_slices, batch_positions = [], []
