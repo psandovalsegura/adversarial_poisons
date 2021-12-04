@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --account=djacobs
-#SBATCH --job-name=weight-decay-experiment-2
+#SBATCH --job-name=weight-4
 #SBATCH --time=3-00:00:00
 #SBATCH --partition=dpart
 #SBATCH --qos=medium
@@ -20,6 +20,7 @@ export SCRIPT_DIR="/cfarhomes/psando/Documents/adversarial_poisons"
 
 export POISON_DATASET_DIR='/vulcanscratch/psando/untrainable_datasets/adv_poisons/fresh_craft'
 export MODEL_NAME='ResNet18'
+export EPS='4'
 
 # Set environment 
 mkdir $WORK_DIR
@@ -29,14 +30,14 @@ pip3 install --upgrade pip
 pip3 install -r ${SCRIPT_DIR}/requirements.txt
 
 # Use class-wise poisons
-# 8/255: classwise_random_ResNet18_optim=None_iter=1
-# 64/255: classwise_random_ResNet18_optim=None_eps=64
+# 8/255: classwise_random_eps=8
+# 64/255: classwise_random_eps=64
 declare -a WD_FLOATS=('0' '1e-4' '2e-4' '3e-4' '4e-4' '5e-4' '6e-4')
 for WD_FLOAT in ${WD_FLOATS[@]}; do
 
 # Evaluate poison
 python poison_evaluation/main.py --model_name $MODEL_NAME --epochs 100 \
---poison_path ${POISON_DATASET_DIR}/classwise_random_ResNet18_optim=None_eps=64 \
+--poison_path ${POISON_DATASET_DIR}/classwise_random_eps=8 \
 --cifar_path /vulcanscratch/psando/cifar-10 --disable_tqdm --workers 4 --lr 0.025 --use_scheduler --weight_decay ${WD_FLOAT}
 
 done

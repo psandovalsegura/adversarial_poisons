@@ -21,10 +21,9 @@ class ForgemasterClasswiseRandom(_Forgemaster):
 
         # Create random noise
         num_classes = len(furnace.trainset.classes)
-        classwise_noise = torch.randn((num_classes, *furnace.trainset[0][0].shape))
-        norms = torch.norm(classwise_noise, dim=(1,2,3), p=np.inf)[:,None,None,None]
-        classwise_noise = (classwise_noise / norms) * (self.args.eps / 255)
-        self.classwise_noise = classwise_noise.to(**self.setup)
+        binary_prob = torch.ones((num_classes, *furnace.trainset[0][0].shape)) * 0.5
+        classwise_noise = torch.bernoulli(binary_prob)
+        self.classwise_noise = classwise_noise.to(**self.setup) * (self.args.eps / 255) / furnace.ds
 
         for batch, example in enumerate(dataloader):
             if batch == 0:
