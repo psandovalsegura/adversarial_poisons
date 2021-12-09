@@ -16,6 +16,12 @@ from models import *
 #from utils import progress_bar
 from PIL import Image
 
+# allow access to village package
+import sys
+sys.path.append(os.getcwd()) 
+print(os.getcwd())
+from village.materials.datasets import CIFAR10, CIFAR20, CIFAR100
+
 class CIFAR_load(torch.utils.data.Dataset):
     def __init__(self, root, baseset, dummy_root='~/data', split='train', download=False, **kwargs):
 
@@ -29,14 +35,16 @@ class CIFAR_load(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         true_index = int(self.samples[idx].split('.')[0])
-        true_img, label = self.baseset[true_index]
+        true_img, label, _ = self.baseset[true_index]
         return self.transform(Image.open(os.path.join(self.root, 'data',
                                             self.samples[idx]))), label, true_img
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
-parser.add_argument('--load_path', type=str)
+parser.add_argument('--poison_path', type=str)
+parser.add_argument('--cifar_data_path', default='~/data', type=str, help='data root of CIFAR dataset')
+parser.add_argument('--base_dataset', type=str, default='CIFAR10', help='either CIFAR10, CIFAR20 or CIFAR100')
 parser.add_argument('--runs', type=int, default=5)
-parser.add_argument('--epochs', type=int, default=200)
+parser.add_argument('--epochs', type=int, default=100)
 parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--resume', '-r', action='store_true',
                     help='resume from checkpoint')
@@ -61,19 +69,20 @@ transform_test = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 ])
 
-baseset = torchvision.datasets.CIFAR10(
-    root='~/data', train=True, download=False, transform=transform_train)
-trainset = CIFAR_load(root=args.load_path, baseset=baseset)
+cifar_dataset_class = CIFAR10 if args.base_dataset == 'CIFAR10' else CIFAR20 if args.base_dataset == 'CIFAR20' else CIFAR100
+
+baseset = cifar_dataset_class(
+    root=args.cifar_data_path, train=True, download=False, transform=transform_train)
+trainset = CIFAR_load(root=args.poison_path, baseset=baseset)
 trainloader = torch.utils.data.DataLoader(
     trainset, batch_size=128, shuffle=True, num_workers=2)
 
-testset = torchvision.datasets.CIFAR10(
-    root='~/data', train=False, download=False, transform=transform_test)
+testset = cifar_dataset_class(
+    root=args.cifar_data_path, train=False, download=False, transform=transform_test)
 testloader = torch.utils.data.DataLoader(
     testset, batch_size=100, shuffle=False, num_workers=2)
 
-classes = ('plane', 'car', 'bird', 'cat', 'deer',
-           'dog', 'frog', 'horse', 'ship', 'truck')
+num_classes = len(baseset.classes)
 
 accs = []
 
@@ -81,7 +90,7 @@ for run in range(args.runs):
     # Model
     print('==> Building model..')
     # net = VGG('VGG19')
-    net = ResNet18()
+    net = ResNet18(num_classes=num_classes)
     # net = PreActResNet18()
     # net = GoogLeNet()
     # net = DenseNet121()
@@ -126,7 +135,7 @@ for run in range(args.runs):
         correct = 0
         total = 0
         with torch.no_grad():
-            for batch_idx, (inputs, targets) in enumerate(testloader):
+            for batch_idx, (inputs, targets, _) in enumerate(testloader):
                 inputs, targets = inputs.to(device), targets.to(device)
                 outputs = net(inputs)
                 loss = criterion(outputs, targets)

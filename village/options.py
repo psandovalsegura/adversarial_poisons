@@ -14,7 +14,7 @@ def options():
     ###########################################################################
     # Central:
     parser.add_argument('--net', default='ResNet18', type=lambda s: [str(item) for item in s.split(',')])
-    parser.add_argument('--dataset', default='CIFAR10', type=str, choices=['CIFAR10', 'CIFAR100', 'ImageNet', 'ImageNet1k', 'MNIST', 'TinyImageNet', 'ImageNet_load'])
+    parser.add_argument('--dataset', default='CIFAR10', type=str, choices=['CIFAR10', 'CIFAR100', 'CIFAR20', 'ImageNet', 'ImageNet1k', 'MNIST', 'TinyImageNet', 'ImageNet_load'])
     parser.add_argument('--recipe', default='targeted', type=str, choices=['grad_explosion', 'tensorclog',
                                                                                     'untargeted', 'targeted'])
     parser.add_argument('--threatmodel', default='single-class', type=str, choices=['single-class', 'third-party', 'random-subset'])

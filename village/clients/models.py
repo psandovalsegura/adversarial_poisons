@@ -16,7 +16,7 @@ def get_model(model_name, dataset_name, pretrained=False):
         if pretrained:
             raise ValueError('Loading pretrained models is only supported for ImageNet.')
         in_channels = 1 if dataset_name == 'MNIST' else 3
-        num_classes = 10 if dataset_name in ['CIFAR10', 'MNIST', 'CIFAR_resized', 'CIFAR_load'] else 100
+        num_classes = 10 if dataset_name in ['CIFAR10', 'MNIST', 'CIFAR_resized', 'CIFAR_load'] else (20 if dataset_name == 'CIFAR20' else 100)
         if 'ResNet' in model_name:
             model = resnet_picker(model_name, dataset_name)
         elif 'efficientnet-b' in model_name.lower():
@@ -195,6 +195,9 @@ def resnet_picker(arch, dataset):
         initial_conv = [3, 1, 1]
     elif dataset == 'CIFAR100':
         num_classes = 100
+        initial_conv = [3, 1, 1]
+    elif dataset == 'CIFAR20':
+        num_classes = 20
         initial_conv = [3, 1, 1]
     elif dataset == 'TinyImageNet':
         num_classes = 200

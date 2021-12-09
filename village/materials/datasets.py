@@ -2,7 +2,7 @@
 import torch
 import torchvision
 import random
-
+import numpy as np
 from ..consts import *   # import all mean/std constants
 
 import torchvision.transforms as transforms
@@ -37,6 +37,14 @@ def construct_datasets(dataset, data_path, normalize=True):
             data_std = torch.std(cc, dim=1).tolist()
         else:
             data_mean, data_std = cifar10_mean, cifar10_std
+    elif dataset == 'CIFAR20':
+        trainset = CIFAR20(root=data_path, train=True, download=True, transform=transforms.ToTensor())
+        if cifar100_mean is None:
+            cc = torch.cat([trainset[i][0].reshape(3, -1) for i in range(len(trainset))], dim=1)
+            data_mean = torch.mean(cc, dim=1).tolist()
+            data_std = torch.std(cc, dim=1).tolist()
+        else:
+            data_mean, data_std = cifar100_mean, cifar100_std
     elif dataset == 'MNIST':
         trainset = MNIST(root=data_path, train=True, download=True, transform=transforms.ToTensor())
         if mnist_mean is None:
@@ -103,6 +111,8 @@ def construct_datasets(dataset, data_path, normalize=True):
         validset = CIFAR100(root=data_path, train=False, download=True, transform=transform_valid)
     elif dataset == 'CIFAR10':
         validset = CIFAR10(root=data_path, train=False, download=True, transform=transform_valid)
+    elif dataset == 'CIFAR20':
+        validset = CIFAR20(root=data_path, train=False, download=True, transform=transform_valid)
     elif dataset == 'MNIST':
         validset = MNIST(root=data_path, train=False, download=True, transform=transform_valid)
     elif dataset == 'TinyImageNet':
@@ -192,6 +202,91 @@ class CIFAR10(torchvision.datasets.CIFAR10):
 
 class CIFAR100(torchvision.datasets.CIFAR100):
     """Super-class CIFAR100 to return image ids with images."""
+
+    def __getitem__(self, index):
+        """Getitem from https://pytorch.org/docs/stable/_modules/torchvision/datasets/cifar.html#CIFAR10.
+
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (image, target, idx) where target is index of the target class.
+
+        """
+        img, target = self.data[index], self.targets[index]
+
+        # doing this so that it is consistent with all other datasets
+        # to return a PIL Image
+        img = Image.fromarray(img)
+
+        if self.transform is not None:
+            img = self.transform(img)
+
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return img, target, index
+
+    def get_target(self, index):
+        """Return only the target and its id.
+
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (target, idx) where target is class_index of the target class.
+
+        """
+        target = self.targets[index]
+
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return target, index
+
+class CIFAR20(torchvision.datasets.CIFAR100):
+    """Sub-class CIFAR100 to return image ids with images.
+       CIFAR20 is CIFAR100 but with 20 classes, where each
+       label is a superclass.
+    """
+
+    def __init__(self, root, train=True, transform=None, target_transform=None, download=False):
+        super().__init__(root, train, transform, target_transform, download)
+
+        # update labels
+        coarse_labels = np.array([ 4,  1, 14,  8,  0,  6,  7,  7, 18,  3,
+                                   3, 14,  9, 18,  7, 11,  3,  9,  7, 11,
+                                   6, 11,  5, 10,  7,  6, 13, 15,  3, 15, 
+                                   0, 11,  1, 10, 12, 14, 16,  9, 11,  5,
+                                   5, 19,  8,  8, 15, 13, 14, 17, 18, 10,
+                                   16, 4, 17,  4,  2,  0, 17,  4, 18, 17,
+                                   10, 3,  2, 12, 12, 16, 12,  1,  9, 19, 
+                                   2, 10,  0,  1, 16, 12,  9, 13, 15, 13,
+                                  16, 19,  2,  4,  6, 19,  5,  5,  8, 19,
+                                  18,  1,  2, 15,  6,  0, 17,  8, 14, 13])
+        self.targets = coarse_labels[self.targets]
+
+        # update classes
+        self.classes = [['beaver', 'dolphin', 'otter', 'seal', 'whale'],
+                        ['aquarium_fish', 'flatfish', 'ray', 'shark', 'trout'],
+                        ['orchid', 'poppy', 'rose', 'sunflower', 'tulip'],
+                        ['bottle', 'bowl', 'can', 'cup', 'plate'],
+                        ['apple', 'mushroom', 'orange', 'pear', 'sweet_pepper'],
+                        ['clock', 'keyboard', 'lamp', 'telephone', 'television'],
+                        ['bed', 'chair', 'couch', 'table', 'wardrobe'],
+                        ['bee', 'beetle', 'butterfly', 'caterpillar', 'cockroach'],
+                        ['bear', 'leopard', 'lion', 'tiger', 'wolf'],
+                        ['bridge', 'castle', 'house', 'road', 'skyscraper'],
+                        ['cloud', 'forest', 'mountain', 'plain', 'sea'],
+                        ['camel', 'cattle', 'chimpanzee', 'elephant', 'kangaroo'],
+                        ['fox', 'porcupine', 'possum', 'raccoon', 'skunk'],
+                        ['crab', 'lobster', 'snail', 'spider', 'worm'],
+                        ['baby', 'boy', 'girl', 'man', 'woman'],
+                        ['crocodile', 'dinosaur', 'lizard', 'snake', 'turtle'],
+                        ['hamster', 'mouse', 'rabbit', 'shrew', 'squirrel'],
+                        ['maple_tree', 'oak_tree', 'palm_tree', 'pine_tree', 'willow_tree'],
+                        ['bicycle', 'bus', 'motorcycle', 'pickup_truck', 'train'],
+                        ['lawn_mower', 'rocket', 'streetcar', 'tank', 'tractor']]
 
     def __getitem__(self, index):
         """Getitem from https://pytorch.org/docs/stable/_modules/torchvision/datasets/cifar.html#CIFAR10.
