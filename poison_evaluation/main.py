@@ -5,7 +5,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 
-import torchvision
+import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 
 import os
@@ -38,6 +38,31 @@ class CIFAR_load(torch.utils.data.Dataset):
         true_img, label, _ = self.baseset[true_index]
         return self.transform(Image.open(os.path.join(self.root, 'data',
                                             self.samples[idx]))), label, true_img
+
+class CIFAR_load_unlearnable(torch.utils.data.Dataset):
+    def __init__(self, perturbation_path, baseset):
+        # Load perturbations
+        noise = torch.load(perturbation_path)
+        perturb_noise = noise.mul(255).clamp_(0, 255).permute(0, 2, 3, 1).to('cpu').numpy()
+
+        # Load data
+        unlearnable_train_dataset = baseset
+        unlearnable_train_dataset.data = unlearnable_train_dataset.data.astype(np.float32)
+        print('Applying unlearnable (error-minimizing) perturbations to train data...')
+        for i in range(len(unlearnable_train_dataset)):
+            unlearnable_train_dataset.data[i] += perturb_noise[i]
+            unlearnable_train_dataset.data[i] = np.clip(unlearnable_train_dataset.data[i], a_min=0, a_max=255)
+        unlearnable_train_dataset.data = unlearnable_train_dataset.data.astype(np.uint8)
+        self.baseset = unlearnable_train_dataset
+
+    def __len__(self):
+        return len(self.baseset)
+
+    def __getitem__(self, idx):
+        unlearnable_img, label, _ = self.baseset[idx]
+        # third return value is meant to be the clean version of the image
+        # but it is unnecessary, and unused in evaluation
+        return unlearnable_img, label, unlearnable_img
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('--poison_path', type=str)
@@ -73,7 +98,7 @@ cifar_dataset_class = CIFAR10 if args.base_dataset == 'CIFAR10' else CIFAR20 if 
 
 baseset = cifar_dataset_class(
     root=args.cifar_data_path, train=True, download=False, transform=transform_train)
-trainset = CIFAR_load(root=args.poison_path, baseset=baseset)
+trainset = CIFAR_load(root=args.poison_path, baseset=baseset) if '.pt' not in args.poison_path else CIFAR_load_unlearnable(args.poison_path, baseset=baseset)
 trainloader = torch.utils.data.DataLoader(
     trainset, batch_size=128, shuffle=True, num_workers=2)
 
