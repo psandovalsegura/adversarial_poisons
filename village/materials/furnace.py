@@ -86,13 +86,15 @@ class Furnace():
 
         # Train augmentations are handled separately as they possibly have to be backpropagated
         if self.augmentations is not None or self.args.paugment:
-            if 'CIFAR' in self.args.dataset:
+            if 'CIFAR' in self.args.dataset or 'SVHN' in self.args.dataset:
                 params = dict(source_size=32, target_size=32, shift=8, fliplr=True)
             elif 'MNIST' in self.args.dataset:
                 params = dict(source_size=28, target_size=28, shift=4, fliplr=True)
             elif 'TinyImageNet' in self.args.dataset:
                 params = dict(source_size=64, target_size=64, shift=64 // 4, fliplr=True)
             elif 'ImageNet' in self.args.dataset:
+                params = dict(source_size=224, target_size=224, shift=224 // 4, fliplr=True)
+            elif 'ImageNetMini' in self.args.dataset:
                 params = dict(source_size=224, target_size=224, shift=224 // 4, fliplr=True)
 
             if self.augmentations == 'default':
@@ -118,13 +120,43 @@ class Furnace():
     def batched_construction(self):
         if self.args.poisonkey is not None:
             set_random_seed(int(self.args.poisonkey))
-        self.global_poison_ids = self._partition(list(range(len(self.trainset))), self.args.poison_partition)
+        self.global_poison_ids = self._partition(len(self.trainset), self.args.poison_partition)
+        print(f'Num partitions: {len(self.global_poison_ids)}, indexed from 0 to {len(self.global_poison_ids)-1}')
+        assert sum([len(partition) for partition in self.global_poison_ids]) == len(self.trainset), \
+            f"Union of all partitions is not the full dataset, {sum([len(partition) for partition in self.global_poison_ids])} != {len(self.trainset)}"
         self.poison_ids = self.global_poison_ids[0]
-        self.completed_flag = 0
         poisonset = Subset(self.trainset, indices=self.poison_ids)
         targetset = []
         self.poison_lookup = dict(zip(self.poison_ids, range(len(self.poison_ids))))
         #dict(zip(self.poison_ids, range(poison_num)))
+        self.poisonset = poisonset
+        self.targetset = targetset
+
+        # Save partitions and index in {self.args.resume}/info.pkl
+        if self.args.resume is not None:
+            payload = {
+                "global_poison_ids": self.global_poison_ids,
+                "max_idx": len(self.global_poison_ids) - 1,
+            }
+            os.makedirs(self.args.resume, exist_ok=True)
+            with open(os.path.join(self.args.resume, 'info.pkl'), 'wb') as file:
+                pickle.dump(payload, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def _partition(self, len_trainset, partition_size):
+        """
+        Partition array of len_trainset indices into subsets of size partition_size. 
+        """
+        indices = np.arange(len_trainset)
+        sections = math.ceil(len_trainset / partition_size)
+        partition = np.array_split(indices, sections)
+        return partition
+    
+    def batched_construction_reset(self, global_poison_ids, idx):
+        self.global_poison_ids = global_poison_ids
+        self.poison_ids = self.global_poison_ids[idx]
+        poisonset = Subset(self.trainset, indices=self.poison_ids)
+        targetset = []
+        self.poison_lookup = dict(zip(self.poison_ids, range(len(self.poison_ids))))
         self.poisonset = poisonset
         self.targetset = targetset
 

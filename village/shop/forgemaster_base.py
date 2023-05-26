@@ -39,9 +39,11 @@ class _Forgemaster():
         """Recipe interface."""
         if self.args.resume != '':
             resume_info = pickle.load( open( f'{self.args.resume}/info.pkl', 'rb'))
-            global_poison_ids, idx = resume_info[0], resume_info[1] + 1
+            global_poison_ids = resume_info["global_poison_ids"]
             if self.args.resume_idx is not None:
                 idx = self.args.resume_idx
+            else:
+                raise NotImplementedError('args.resume without args.resume_idx not possible. Please specify args.resume_idx!')
             #poison_ids, idx
             furnace.batched_construction_reset(global_poison_ids, idx)
         poison_delta = self._forge(client, furnace)

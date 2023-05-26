@@ -4,6 +4,7 @@ import torch
 
 import datetime
 import time
+import os
 
 import village
 torch.backends.cudnn.benchmark = village.consts.BENCHMARK
@@ -25,7 +26,7 @@ if __name__ == "__main__":
     forgemaster = village.Forgemaster(args, setup=setup)
 
     start_time = time.time()
-    if args.pretrained:
+    if args.pretrained or os.path.exists(os.path.join(args.checkpoint_directory, args.dataset, f'{args.net[0]}.pt')):
         print('Loading pretrained model...')
         stats_clean = None
     else:

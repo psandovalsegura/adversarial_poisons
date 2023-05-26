@@ -14,7 +14,7 @@ def options():
     ###########################################################################
     # Central:
     parser.add_argument('--net', default='ResNet18', type=lambda s: [str(item) for item in s.split(',')])
-    parser.add_argument('--dataset', default='CIFAR10', type=str, choices=['CIFAR10', 'CIFAR100', 'ImageNet', 'ImageNet1k', 'MNIST', 'TinyImageNet', 'ImageNet_load'])
+    parser.add_argument('--dataset', default='CIFAR10', type=str, choices=['CIFAR10', 'CIFAR100', 'ImageNet', 'ImageNetMini', 'ImageNet1k', 'MNIST', 'SVHN', 'TinyImageNet', 'ImageNet_load'])
     parser.add_argument('--recipe', default='targeted', type=str, choices=['grad_explosion', 'tensorclog',
                                                                                     'untargeted', 'targeted'])
     parser.add_argument('--threatmodel', default='single-class', type=str, choices=['single-class', 'third-party', 'random-subset'])
@@ -77,6 +77,8 @@ def options():
 
     # Optimization setup
     parser.add_argument('--pretrained', action='store_true', help='Load pretrained models from torchvision, if possible [only valid for ImageNet].')
+    parser.add_argument('--checkpoint_directory', default='/fs/vulcan-projects/stereo-detection/unlearnable-ds-neurips-23/adversarial_poisons_checkpoints', type=str)
+    parser.add_argument('--save_final_checkpoint', action='store_true', help='Save final checkpoint during training.')
     parser.add_argument('--optimization', default='conservative', type=str, help='Optimization Strategy')
 
     # Strategy overrides:

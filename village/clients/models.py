@@ -1,5 +1,6 @@
 """Model definitions."""
 
+import os
 import torch
 import torchvision
 from torchvision.models.resnet import BasicBlock, Bottleneck
@@ -10,13 +11,13 @@ from .mobilenet import MobileNetV2
 from .vgg import VGG
 
 
-def get_model(model_name, dataset_name, pretrained=False):
+def get_model(model_name, dataset_name, pretrained=False, checkpoints_dir=None):
     """Retrieve an appropriate architecture."""
-    if 'CIFAR' in dataset_name or 'MNIST' in dataset_name:
+    if 'CIFAR' in dataset_name or 'MNIST' in dataset_name or 'SVHN' in dataset_name:
         if pretrained:
             raise ValueError('Loading pretrained models is only supported for ImageNet.')
         in_channels = 1 if dataset_name == 'MNIST' else 3
-        num_classes = 10 if dataset_name in ['CIFAR10', 'MNIST', 'CIFAR_resized', 'CIFAR_load'] else 100
+        num_classes = 10 if dataset_name in ['CIFAR10', 'MNIST', 'SVHN', 'CIFAR_resized', 'CIFAR_load'] else 100
         if 'ResNet' in model_name:
             model = resnet_picker(model_name, dataset_name)
         elif 'efficientnet-b' in model_name.lower():
@@ -53,6 +54,26 @@ def get_model(model_name, dataset_name, pretrained=False):
             model = resnet_picker(model_name, dataset_name)
         else:
             raise ValueError(f'Model {model_name} not implemented for TinyImageNet')
+    elif 'ImageNetMini' in dataset_name:
+        in_channels = 3
+        num_classes = 100
+
+        if 'ResNet' in model_name:
+            # model = resnet_picker(model_name, dataset_name)
+            try:
+                extra_args = dict()
+                model = getattr(torchvision.models, model_name.lower())(pretrained=pretrained, **extra_args)
+            except AttributeError:
+                raise NotImplementedError(f'ImageNet model {model_name} not found at torchvision.models.')
+            
+            # replace the last layer with a new one where out_features=num_classes
+            model.fc = torch.nn.Linear(model.fc.in_features, num_classes)
+            print(f'Loaded model {model_name} for ImageNetMini with {model.fc.out_features} classes.')
+        else:
+            raise ValueError(f'Model {model_name} not implemented for ImageNetMini')
+
+        if checkpoints_dir is not None:
+            model = load_model_checkpoint(model, checkpoints_dir, dataset_name, model_name)
 
     elif 'ImageNet' in dataset_name:
         in_channels = 3
@@ -78,6 +99,15 @@ def get_model(model_name, dataset_name, pretrained=False):
 
     return model
 
+def load_model_checkpoint(model, checkpoints_dir, dataset_name, model_name):
+    # check if checkpoints directory contains dataset_name/model_name
+    model_path = os.path.join(checkpoints_dir, dataset_name, f'{model_name}.pt')
+    if os.path.exists(model_path):
+        model.load_state_dict(torch.load(model_path))
+        print(f'Loaded model from {model_path}')
+    else:
+        print(f'No checkpoints found for {model_name} on {dataset_name}.')
+    return model
 
 def linear_model(dataset, num_classes=10):
     """Define the simplest linear model."""
@@ -190,10 +220,10 @@ def resnet_picker(arch, dataset):
     """Pick an appropriate resnet architecture for MNIST/CIFAR."""
     in_channels = 1 if dataset == 'MNIST' else 3
     num_classes = 10
-    if dataset in ['CIFAR10', 'MNIST', 'CIFAR_load']:
+    if dataset in ['CIFAR10', 'MNIST', 'SVHN', 'CIFAR_load']:
         num_classes = 10
         initial_conv = [3, 1, 1]
-    elif dataset == 'CIFAR100':
+    elif dataset in ['CIFAR100', 'ImageNetMini']:
         num_classes = 100
         initial_conv = [3, 1, 1]
     elif dataset == 'TinyImageNet':

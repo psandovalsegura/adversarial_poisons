@@ -16,6 +16,8 @@ def training_strategy(model_name, args):
         defs = BasicStrategy(model_name, args)
     elif args.optimization == 'memory-saving':
         defs = MemoryStrategy(model_name, args)
+    elif args.optimization == 'debug':
+        defs = DebugStrategy(model_name, args)
     else:
         defs = FastStrategy(model_name, args)
     return defs
@@ -45,6 +47,25 @@ class Strategy:
             self.augmentations = args.data_aug
         if any(net in model_name.lower() for net in BRITTLE_NETS):
             self.lr *= 0.1
+
+@dataclass
+class DebugStrategy(Strategy):
+    """Default usual parameters, defines a config object."""
+
+    def __init__(self, model_name, args):
+        """Initialize training hyperparameters."""
+        self.lr = 0.1
+        self.epochs = 1 # main change over conservative
+        self.batch_size = 128
+        self.optimizer = 'SGD'
+        self.scheduler = 'linear'
+        self.weight_decay = 5e-4
+        self.augmentations = True
+        self.privacy = dict(clip=None, noise=None)
+        self.adversarial_steps = 0
+        self.validate = 10
+
+        super().__init__(model_name, args)
 
 @dataclass
 class ConservativeStrategy(Strategy):

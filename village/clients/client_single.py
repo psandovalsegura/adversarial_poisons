@@ -1,5 +1,6 @@
 """Single model default victim class."""
 
+import os
 import torch
 import numpy as np
 from collections import defaultdict
@@ -55,6 +56,15 @@ class _ClientSingle(_ClientBase):
             self._step(furnace, poison_delta, loss_fn, self.epoch, stats, *single_setup)
             if self.args.dryrun:
                 break
+
+        if self.args.save_final_checkpoint:
+            # Save final model state dict to dataset_name/args.checkpoint_directory/model_name/dataset_name
+            model_dir = os.path.join(self.args.checkpoint_directory, self.args.dataset)
+            os.makedirs(model_dir, exist_ok=True)
+            model_path = os.path.join(model_dir, f'{self.args.net[0]}.pt')
+            torch.save(self.model.state_dict(), model_path)
+            print(f'Saved final model state_dict to {model_path}.')
+
         return stats
 
     def step(self, furnace, poison_delta, poison_targets, true_classes):

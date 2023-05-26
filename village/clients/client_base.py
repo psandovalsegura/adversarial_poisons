@@ -106,7 +106,7 @@ class _ClientBase:
 
     def _initialize_model(self, model_name, feature_extractor=False):
 
-        model = get_model(model_name, self.args.dataset, pretrained=self.args.pretrained)
+        model = get_model(model_name, self.args.dataset, pretrained=self.args.pretrained, checkpoints_dir=self.args.checkpoint_directory)
         # Define training routine
         defs = training_strategy(model_name, self.args)
         criterion = torch.nn.CrossEntropyLoss()

@@ -7,6 +7,7 @@ from ..consts import *   # import all mean/std constants
 
 import torchvision.transforms as transforms
 from PIL import Image, ImageFilter
+import numpy as np
 import os
 import glob
 
@@ -45,8 +46,24 @@ def construct_datasets(dataset, data_path, normalize=True):
             data_std = (torch.std(cc, dim=0).item(),)
         else:
             data_mean, data_std = mnist_mean, mnist_std
+    elif dataset == 'SVHN':
+        trainset = SVHN(root=data_path, split='train', download=False, transform=transforms.ToTensor())
+        # if svhn_mean is None:
+        cc = torch.cat([trainset[i][0].reshape(3, -1) for i in range(len(trainset))], dim=1)
+        data_mean = torch.mean(cc, dim=1).tolist()
+        data_std = torch.std(cc, dim=1).tolist()
+        # else:
+        # data_mean, data_std = svhn_mean, svhn_std
     elif dataset == 'ImageNet':
         trainset = ImageNet(root=data_path, split='train', download=False, transform=transforms.ToTensor())
+        if imagenet_mean is None:
+            cc = torch.cat([trainset[i][0].reshape(3, -1) for i in range(len(trainset))], dim=1)
+            data_mean = torch.mean(cc, dim=1).tolist()
+            data_std = torch.std(cc, dim=1).tolist()
+        else:
+            data_mean, data_std = imagenet_mean, imagenet_std
+    elif dataset == 'ImageNetMini':
+        trainset = ImageNetMini(root=data_path, split='train', transform=transforms.ToTensor())
         if imagenet_mean is None:
             cc = torch.cat([trainset[i][0].reshape(3, -1) for i in range(len(trainset))], dim=1)
             data_mean = torch.mean(cc, dim=1).tolist()
@@ -82,7 +99,7 @@ def construct_datasets(dataset, data_path, normalize=True):
         trainset.data_std = (1.0, 1.0, 1.0)
 
     # Setup data
-    if dataset in ['ImageNet', 'ImageNet1k']:
+    if dataset in ['ImageNet', 'ImageNet1k', 'ImageNetMini']:
         transform_train = transforms.Compose([
             transforms.Resize(256),
             transforms.CenterCrop(224),
@@ -105,6 +122,8 @@ def construct_datasets(dataset, data_path, normalize=True):
         validset = CIFAR10(root=data_path, train=False, download=True, transform=transform_valid)
     elif dataset == 'MNIST':
         validset = MNIST(root=data_path, train=False, download=True, transform=transform_valid)
+    elif dataset == 'SVHN':
+        validset = SVHN(root=data_path, split='test', download=False, transform=transform_valid)
     elif dataset == 'TinyImageNet':
         validset = TinyImageNet(root=data_path, split='val', transform=transform_valid)
     elif dataset == 'ImageNet':
@@ -116,6 +135,15 @@ def construct_datasets(dataset, data_path, normalize=True):
             transforms.ToTensor(),
             transforms.Normalize(data_mean, data_std) if normalize else transforms.Lambda(lambda x : x)])
         validset = ImageNet(root=data_path, split='val', download=False, transform=transform_valid)
+    elif dataset == 'ImageNetMini':
+        # Prepare ImageNet beforehand in a different script!
+        # We are not going to redownload on every instance
+        transform_valid = transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(data_mean, data_std) if normalize else transforms.Lambda(lambda x : x)])
+        validset = ImageNetMini(root=data_path, split='val', transform=transform_valid)
     elif dataset == 'ImageNet1k':
         # Prepare ImageNet beforehand in a different script!
         # We are not going to redownload on every instance
@@ -279,6 +307,18 @@ class MNIST(torchvision.datasets.MNIST):
 
         return target, index
 
+class SVHN(torchvision.datasets.SVHN):
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, index):
+        img, target = self.data[index], self.labels[index]
+        img = Image.fromarray(np.transpose(img, (1,2,0)))
+        if self.transform is not None:
+            img = self.transform(img)
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+        return img, target, index
 
 class ImageNet(torchvision.datasets.ImageNet):
     """Overwrite torchvision ImageNet to change metafile location if metafile cannot be written due to some reason."""
@@ -350,6 +390,41 @@ class ImageNet(torchvision.datasets.ImageNet):
             target = self.target_transform(target)
 
         return target, index
+
+
+class ImageNetMini(torchvision.datasets.ImageNet):
+    def __init__(self, root, split='train', **kwargs):
+        super(ImageNetMini, self).__init__(root, split=split, **kwargs)
+        self.new_targets = []
+        self.new_images = []
+        for i, (file, cls_id) in enumerate(self.imgs):
+            if cls_id <= 99:
+                self.new_targets.append(cls_id)
+                self.new_images.append((file, cls_id))
+        self.imgs = self.new_images
+        self.targets = self.new_targets
+        self.samples = self.imgs
+        print('[class ImageNetMini] num samples:', len(self.samples))
+        print('[class ImageNetMini] num targets:', len(self.targets))
+        return
+    
+    def __getitem__(self, index: int):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (sample, target) where target is class_index of the target class.
+        """
+        path, target = self.samples[index]
+        sample = self.loader(path)
+        if self.transform is not None:
+            sample = self.transform(sample)
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+            
+        return sample, target, index
+
 
 
 class ImageNet1k(ImageNet):
